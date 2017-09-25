@@ -68,7 +68,7 @@ public:
     }
 
     std::string getKrbName() const {
-        return effectiveUser.getName();
+        return krbUser.getName();
 
     }
     std::string getPrincipal() const {
