@@ -235,12 +235,12 @@ void InputStreamImpl::updateBlockInfos() {
             if (initedLbs) {
                   if (!cryptoCodec && lbs->getEncryption().getKey().length() > 0) {
                     FileEncryptionInfo& encryption = lbs->getEncryption();
-                    RpcAuth auth = RpcAuth(filesystem->getUserInfo(),
-                          RpcAuth::ParseMethod(conf->getKmsMethod()));
+                    shared_ptr<RpcAuth> auth = shared_ptr<RpcAuth>(new RpcAuth(filesystem->getUserInfo(),
+                          RpcAuth::ParseMethod(conf->getKmsMethod())));
                     kcp = shared_ptr<KmsClientProvider>(
                             new KmsClientProvider(auth, conf));
 
-                    cryptoCodec = shared_ptr<CryptoCodec>(new CryptoCodec(encryption, getKmsClientProvider(),
+                    cryptoCodec = shared_ptr<CryptoCodec>(new CryptoCodec(&encryption, kcp,
                         conf->getCryptoBufferSize()));
                 }
             }
