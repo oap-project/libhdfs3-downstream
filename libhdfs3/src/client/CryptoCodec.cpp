@@ -81,7 +81,7 @@ std::string CryptoCodec::getDecryptedKeyFromKms()
     std::replace(key.begin(), key.end(), '-', '+');
     std::replace(key.begin(), key.end(), '_', '/');
 
-    LOG(INFO, "CryptoCodec : getDecryptedKeyFromKms material is :%s", key.c_str());
+    LOG(DEBUG3, "CryptoCodec : getDecryptedKeyFromKms material is :%s", key.c_str());
 
     key = KmsClientProvider::base64Decode(key);
     return key;
@@ -100,7 +100,7 @@ std::string CryptoCodec::endecInternal(const char * buffer, int64_t size, bool e
 {
     std::string key = encryptionInfo->getKey();
     std::string iv = encryptionInfo->getIv();
-    LOG(INFO,
+    LOG(DEBUG3,
             "CryptoCodec : endecInternal info. key:%s, iv:%s, buffer:%s, size:%d, is_encode:%d.",
             key.c_str(), iv.c_str(), buffer, size, enc);
 	
@@ -113,7 +113,7 @@ std::string CryptoCodec::endecInternal(const char * buffer, int64_t size, bool e
     } else if (key.length() == KEY_LENGTH_128) {
         cipher = EVP_aes_128_ctr();
     } else {
-        THROW(InvalidParameter, "CryptoCodec : Invalid key length.");
+        cipher = EVP_aes_192_ctr();
     }
 
     /* Init cipher context with cipher method, encrypted key and IV from KMS. */
