@@ -220,6 +220,7 @@ std::string KmsClientProvider::buildKmsUrl(const std::string &url, const std::st
 
     if (method == AuthMethod::KERBEROS) {
         initKerberos();
+        return baseUrl;
     } else if (method == AuthMethod::SIMPLE) {
         std::string user = auth->getUser().getRealUser();
         LOG(DEBUG3,
@@ -335,7 +336,7 @@ void KmsClientProvider::createKey(const std::string &keyName, const std::string 
 
     std::string response = hc->post();
 
-    LOG(INFO,
+    LOG(DEBUG3,
             "KmsClientProvider::createKey : The key name, key cipher, key length, key material, description are : %s, %s, %d, %s, %s. The kms url is : %s . The kms body is : %s. The response of kms server is : %s .",
             keyName.c_str(), cipher.c_str(), length, material.c_str(),
             description.c_str(), url.c_str(), body.c_str(), response.c_str());
@@ -361,7 +362,7 @@ ptree KmsClientProvider::getKeyMetadata(const FileEncryptionInfo &encryptionInfo
     hc->addHeader(beforeAction());
     std::string response = hc->get();
 
-    LOG(INFO,
+    LOG(DEBUG3,
             "KmsClientProvider::getKeyMetadata : The kms url is : %s. The response of kms server is : %s .",
             url.c_str(), response.c_str());
 
@@ -387,7 +388,7 @@ void KmsClientProvider::deleteKey(const FileEncryptionInfo &encryptionInfo)
     hc->addHeader(beforeAction());
     std::string response = hc->del();
 
-    LOG(INFO,
+    LOG(DEBUG3,
             "KmsClientProvider::deleteKey : The kms url is : %s. The response of kms server is : %s .",
             url.c_str(), response.c_str());
 }
@@ -421,10 +422,10 @@ ptree KmsClientProvider::decryptEncryptedKey(const FileEncryptionInfo &encryptio
     hc->setExpectedResponseCode(200);
     hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
     hc->setRequestTimeout(conf->getCurlTimeOut());
-    beforeAction();
+    hc->addHeader(beforeAction());
     std::string response = hc->post();
 
-    LOG(INFO,
+    LOG(DEBUG3,
             "KmsClientProvider::decryptEncryptedKey : The kms url is : %s . The kms body is : %s. The response of kms server is : %s .",
             url.c_str(), body.c_str(), response.c_str());
     return fromJson(response);
@@ -491,9 +492,10 @@ std::string KmsClientProvider::getToken()
         return kmsToken;
     }
 
-    LOG(INFO,
+    LOG(DEBUG3,
             "KmsClientProvider::getToken : The kms url is : %s . The response of kms server is : %s .",
             url.c_str(), response.c_str());
+    return "";
 
 }
 }
