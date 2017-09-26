@@ -120,10 +120,25 @@ std::string KmsClientProvider::base64Decode(const std::string &data) {
  * @param auth RpcAuth to get the auth method and user info.
  * @param conf a SessionConfig to get the configuration.
  */
-KmsClientProvider::KmsClientProvider(shared_ptr<RpcAuth> rpcAuth, shared_ptr<SessionConfig> config) : auth(rpcAuth), conf(config)
+KmsClientProvider::KmsClientProvider(shared_ptr<RpcAuth> rpcAuth, shared_ptr<SessionConfig> config) : auth(rpcAuth),
+conf(config), session(NULL), ctx(NULL)
 {
     hc.reset(new HttpClient());
     method = RpcAuth::ParseMethod(conf->getKmsMethod());
+    if (!conf->getVerifySSL())
+        this->hc->disableSSLValidate();
+}
+
+KmsClientProvider::~KmsClientProvider() {
+    if (session != NULL) {
+        gsasl_finish(session);
+        session = NULL;
+    }
+
+    if (ctx != NULL) {
+        gsasl_done(ctx);
+        ctx = NULL;
+    }
 }
 
 /**
@@ -132,6 +147,8 @@ KmsClientProvider::KmsClientProvider(shared_ptr<RpcAuth> rpcAuth, shared_ptr<Ses
 void KmsClientProvider::setHttpClient(shared_ptr<HttpClient> hc)
 {
     this->hc = hc;
+    if (!conf->getVerifySSL())
+        this->hc->disableSSLValidate();
 }
 
 /**
@@ -158,6 +175,40 @@ std::string KmsClientProvider::parseKmsUrl()
 
 }
 
+
+void KmsClientProvider::initKerberos() {
+    int rc = gsasl_init(&ctx);
+
+    if (rc != GSASL_OK) {
+        THROW(HdfsIOException, "cannot initialize libgsasl");
+    }
+    /* Create new authentication session. */
+    if ((rc = gsasl_client_start(ctx, "GSSAPI", &session)) != GSASL_OK) {
+        THROW(HdfsIOException, "Cannot initialize client (%d): %s", rc,
+              gsasl_strerror(rc));
+    }
+    std::string principal = auth->getUser().getPrincipal();
+    gsasl_property_set(session, GSASL_AUTHID, principal.c_str());
+
+    std::string http = "http://";
+    std::string https = "https://";
+    std::string host = "";
+
+    if (url.compare(0, http.length(), http) == 0)
+        host = url.substr(http.length());
+    else
+        host = url.substr(https.length());
+    size_t pos = host.find(":");
+    if (pos != host.npos) {
+        host = host.substr(0, pos);
+    }
+    gsasl_property_set(session, GSASL_HOSTNAME, host.c_str());
+
+    std::string spn = "HTTP";
+    gsasl_property_set(session, GSASL_SERVICE, spn.c_str());
+
+}
+
 /**
  * Build kms url based on urlSuffix and different auth method. 
  */
@@ -168,8 +219,7 @@ std::string KmsClientProvider::buildKmsUrl(const std::string &url, const std::st
     std::size_t found = urlSuffix.find('?');
 
     if (method == AuthMethod::KERBEROS) {
-        // todo
-        THROW(InvalidParameter, "KmsClientProvider : Not support kerberos yet.");
+        initKerberos();
     } else if (method == AuthMethod::SIMPLE) {
         std::string user = auth->getUser().getRealUser();
         LOG(DEBUG3,
@@ -195,6 +245,60 @@ void KmsClientProvider::setCommonHeaders(std::vector<std::string>& headers)
     headers.push_back("Accept: *");
 }
 
+std::string KmsClientProvider::beforeAction()
+{
+    if (method == AuthMethod::KERBEROS) {
+        int rc;
+        char * outputStr = NULL;
+        size_t outputSize;
+        std::string retval;
+        std::string challenge = "";
+        rc = gsasl_step(session, &challenge[0], challenge.size(), &outputStr,
+                        &outputSize);
+        if (rc == GSASL_GSSAPI_INIT_SEC_CONTEXT_ERROR && method == AuthMethod::KERBEROS) {
+            // Try again using principal instead
+            gsasl_finish(session);
+            initKerberos();
+            gsasl_property_set(session, GSASL_GSSAPI_DISPLAY_NAME, auth->getUser().getPrincipal().c_str());
+            rc = gsasl_step(session, &challenge[0], challenge.size(), &outputStr,
+                        &outputSize);
+        }
+        if (rc != GSASL_OK && rc != GSASL_NEEDS_MORE)
+            THROW(AccessControlException, "Failed to negotiate with KMS: %s", gsasl_strerror(rc));
+
+        retval.resize(outputSize);
+        memcpy(&retval[0], outputStr, outputSize);
+
+        if (outputStr) {
+            free(outputStr);
+        }
+        std::string temp;
+        std::string encoded = base64Encode(retval);
+        std::replace(encoded.begin(), encoded.end(), '+', '-');
+        std::replace(encoded.begin(), encoded.end(), '/', '_');
+        temp = "Authorization: Negotiate " + encoded;
+        return temp;
+
+    } else if (method != AuthMethod::SIMPLE) {
+        const Token *ptr = auth->getUser().selectToken("kms-dt", "kms");
+        if (!ptr)
+            THROW(HdfsIOException, "Can't find provided KMS token");
+        std::string auth_cookie = "hadoop.auth";
+        std::string auth_cookie_eq = auth_cookie + "=";
+        std::string kmsToken = ptr->getIdentifier();
+
+        if (kmsToken.length() == 0)
+             THROW(HdfsIOException, "KMS Token not set");
+
+        if (kmsToken[0] != '"') {
+            kmsToken = "\"" + kmsToken + "\"";
+        }
+        std::string temp = "Cookie: " + auth_cookie_eq + kmsToken;
+        return temp;
+    } else {
+        return "";
+    }
+}
 
 /**
  * Create an encryption key from kms.
@@ -227,6 +331,8 @@ void KmsClientProvider::createKey(const std::string &keyName, const std::string 
     hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
     hc->setRequestTimeout(conf->getCurlTimeOut());
     hc->setExpectedResponseCode(201);
+    hc->addHeader(beforeAction());
+
     std::string response = hc->post();
 
     LOG(INFO,
@@ -252,6 +358,7 @@ ptree KmsClientProvider::getKeyMetadata(const FileEncryptionInfo &encryptionInfo
     hc->setExpectedResponseCode(200);
     hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
     hc->setRequestTimeout(conf->getCurlTimeOut());
+    hc->addHeader(beforeAction());
     std::string response = hc->get();
 
     LOG(INFO,
@@ -277,6 +384,7 @@ void KmsClientProvider::deleteKey(const FileEncryptionInfo &encryptionInfo)
     hc->setExpectedResponseCode(200);
     hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
     hc->setRequestTimeout(conf->getCurlTimeOut());
+    hc->addHeader(beforeAction());
     std::string response = hc->del();
 
     LOG(INFO,
@@ -313,6 +421,7 @@ ptree KmsClientProvider::decryptEncryptedKey(const FileEncryptionInfo &encryptio
     hc->setExpectedResponseCode(200);
     hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
     hc->setRequestTimeout(conf->getCurlTimeOut());
+    beforeAction();
     std::string response = hc->post();
 
     LOG(INFO,
@@ -321,5 +430,71 @@ ptree KmsClientProvider::decryptEncryptedKey(const FileEncryptionInfo &encryptio
     return fromJson(response);
 }
 
+std::string KmsClientProvider::getToken()
+{
+    hc->init();
+    /* Prepare url for HttpClient.*/
+    url = parseKmsUrl();
+    std::string urlSuffix = "keys";
+    url = buildKmsUrl(url, urlSuffix);
+    /* Prepare headers for HttpClient.*/
+    std::vector<std::string> headers;
+    setCommonHeaders(headers);
+    /* Prepare body for HttpClient. */
+
+    /* Set options for HttpClient to get response. */
+    hc->setURL(url);
+    hc->setHeaders(headers);
+    hc->setRequestRetryTimes(conf->getHttpRequestRetryTimes());
+    hc->setRequestTimeout(conf->getCurlTimeOut());
+    hc->setExpectedResponseCode(201);
+    hc->addHeader(beforeAction());
+    hc->setupHeaderCallback();
+    hc->get();
+    std::string response = hc->getHeaderResponse();
+
+    size_t size = response.length();
+    const char* data = response.c_str();
+    const char *ptr = (char*) memchr(data, ':', size);
+    std::string kmsToken;
+
+    if (ptr) {
+        int idx = ptr-data;
+        std::string key;
+        key.assign(data, idx);
+        std::string value;
+        int offset = 1;
+        if (*(ptr+1) == ' ')
+            offset += 1;
+        value.assign(ptr+offset, size-idx-offset);
+
+        size_t last = value.find_last_not_of("\r\n");
+        if (last == value.npos)
+            value = "";
+        else
+            value =  value.substr(0, (last+1));
+
+        if (key == "Set-Cookie") {
+            std::string auth_cookie = "hadoop.auth";
+            std::string auth_cookie_eq = auth_cookie + "=";
+            int pos = value.find(auth_cookie_eq);
+            if (pos != (int)value.npos) {
+                std::string token = value.substr(pos+auth_cookie_eq.length());
+                int separator = token.find(";");
+                if (separator != (int)token.npos) {
+                    token = token.substr(0, separator);
+                }
+                kmsToken = token;
+            }
+
+        }
+        return kmsToken;
+    }
+
+    LOG(INFO,
+            "KmsClientProvider::getToken : The kms url is : %s . The response of kms server is : %s .",
+            url.c_str(), response.c_str());
+
+}
 }
 

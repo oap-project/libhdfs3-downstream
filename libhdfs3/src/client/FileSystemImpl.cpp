@@ -648,7 +648,7 @@ std::string FileSystemImpl::getKmsToken() {
     shared_ptr<RpcAuth> auth = shared_ptr<RpcAuth>(new RpcAuth(getUserInfo(), method));
     shared_ptr<SessionConfig> config = shared_ptr<SessionConfig>(new SessionConfig(conf));
     shared_ptr<KmsClientProvider> getter = shared_ptr <KmsClientProvider>(new KmsClientProvider(auth, config));
-    return getter->getMaterial(info, true);
+    return getter->getToken();
 }
 
 

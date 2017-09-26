@@ -62,6 +62,10 @@ public:
      */
     void setHeaders(const std::vector<std::string> &headers);
 
+
+    void addHeader(const std::string &header);
+
+
     /**
      * Set body for http client.
      */
@@ -91,6 +95,10 @@ public:
      * Do clean up for curl.
      */
     void destroy();
+
+    void disableSSLValidate();
+
+    void setupHeaderCallback();
 
     /**
      * Http POST method.
@@ -122,6 +130,10 @@ public:
      */
     std::string errorString();
 
+    std::string& getHeaderResponse() {
+        return headerResponse;
+    }
+
 private:
 
     /**
@@ -137,7 +149,16 @@ private:
      */
     static size_t CurlWriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
+
+    /**
+     * Curl call back function to receive the header messages.
+     * @return return the size of header messages.
+     */
+    static size_t CurlWriteHeaderCallback(char *contents, size_t size, size_t nmemb, void *userp);
+
+
     static bool initialized;
+    bool sslValidate;
     CURLcode res;
     std::string url;
     std::vector<std::string> headers;
@@ -148,6 +169,7 @@ private:
     CURL *curl;
     struct curl_slist *list;
     std::string response;
+    std::string headerResponse;
     char errbuf[CURL_ERROR_SIZE] = { 0 };
 };
 

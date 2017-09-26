@@ -55,7 +55,7 @@ namespace Hdfs {
 #define CURL_GET_RESPONSE(handle, code, fmt) \
     CURL_GETOPT_ERROR2(handle, CURLINFO_RESPONSE_CODE, code, fmt);
 
-HttpClient::HttpClient() : curl(NULL), list(NULL) {
+HttpClient::HttpClient() : curl(NULL), list(NULL), sslValidate(true) {
 }
 
 /**
@@ -66,6 +66,7 @@ HttpClient::HttpClient(const std::string &url) {
     curl = NULL;
     list = NULL;
     this->url = url;
+    sslValidate = true;
 }
 
 /**
@@ -86,6 +87,10 @@ std::string HttpClient::errorString() {
     return errbuf;
 }
 
+void HttpClient::disableSSLValidate() {
+    sslValidate = false;
+}
+
 /**
  * Curl call back function to receive the reponse messages.
  * @return return the size of reponse messages. 
@@ -99,6 +104,21 @@ size_t HttpClient::CurlWriteMemoryCallback(void *contents, size_t size, size_t n
     ((std::string *) userp)->append((const char *) contents, realsize);
     LOG(DEBUG3, "HttpClient : Http response is : %s", ((std::string * )userp)->c_str());
     return realsize;
+}
+
+/**
+ * Curl call back function to receive the header messages.
+ * @return return the size of reponse messages.
+ */
+size_t HttpClient::CurlWriteHeaderCallback(char *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  if (userp == NULL || contents == NULL) {
+        return 0;
+  }
+  ((std::string *) userp)->append((const char *) contents, realsize);
+  LOG(DEBUG3, "HttpClient : Http response is : %s", ((std::string * )userp)->c_str());
+  return realsize;
 }
 
 /**
@@ -121,6 +141,11 @@ void HttpClient::init() {
         "Cannot initialize curl error buffer for KMS: %s");
 
     errbuf[0] = 0;
+
+    if (!sslValidate) {
+        CURL_SETOPT_ERROR2(curl, CURLOPT_SSL_VERIFYPEER, 0,
+                "Cannot initialize SSL no verify for KMS: %s: %s");
+    }
 
     CURL_SETOPT_ERROR2(curl, CURLOPT_NOPROGRESS, 1,
         "Cannot initialize no progress in HttpClient: %s: %s");
@@ -147,6 +172,14 @@ void HttpClient::init() {
     CURL_SETOPT_ERROR2(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0",
         "Cannot initialize user agent in HttpClient: %s: %s");
     list = NULL;
+}
+
+void HttpClient::setupHeaderCallback() {
+    CURL_SETOPT_ERROR2(curl, CURLOPT_HEADERFUNCTION, HttpClient::CurlWriteHeaderCallback,
+                "Cannot initialize header reader in HttpClient: %s: %s");
+
+    CURL_SETOPT_ERROR2(curl, CURLOPT_HEADERDATA, (void *)&headerResponse,
+        "Cannot initialize header reader data in HttpClient: %s: %s");
 }
 
 /**
@@ -208,6 +241,17 @@ void HttpClient::setHeaders(const std::vector<std::string> &headers) {
     }
 }
 
+void HttpClient::addHeader(const std::string &header) {
+    if (header.length() > 0) {
+        this->headers.push_back(header);
+        list = curl_slist_append(list, header.c_str());
+            if (!list) {
+                THROW(HdfsIOException, "Cannot add header in HttpClient.");
+            }
+    } else {
+         LOG(DEBUG3, "HttpClient : Header is empty.");
+    }
+}
 
 /**
  * Set body for http client.

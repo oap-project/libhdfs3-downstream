@@ -350,6 +350,10 @@ public:
         return curlTimeout;
     }
 
+    bool getVerifySSL() const {
+        return verifySSL;
+    }
+
 public:
 
     int32_t rpcProtection;
@@ -423,6 +427,8 @@ public:
     std::string kmsAuthToken;
     int32_t httpRequestRetryTimes;
     int64_t curlTimeout;
+
+    bool verifySSL;
 
 };
 

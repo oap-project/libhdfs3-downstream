@@ -55,8 +55,7 @@ public:
     /**
      * Destroy a KmsClientProvider instance.
      */
-    virtual ~KmsClientProvider() {
-    }
+    virtual ~KmsClientProvider();
 
     /**
      * Set HttpClient object.
@@ -94,6 +93,11 @@ public:
     virtual ptree decryptEncryptedKey(const FileEncryptionInfo &encryptionInfo);
 
     /**
+     * Get KMS delegation token
+    */
+    virtual std::string getToken();
+
+    /**
      * Encode string to base64.
      */
     static std::string base64Encode(const std::string &data);
@@ -104,6 +108,8 @@ public:
     static std::string base64Decode(const std::string &data);
 
 private:
+
+    void initKerberos();
 
     /**
      * Convert ptree format to json format.
@@ -124,6 +130,12 @@ private:
      * Build kms url based on urlSuffix and different auth method.
      */
     std::string buildKmsUrl(const std::string &url, const std::string &urlSuffix);
+
+    /**
+      * Do kerberos or token logic prior to web action
+      */
+    std::string beforeAction();
+
     /**
      * Set common headers for kms API.
      */
@@ -135,6 +147,8 @@ private:
     shared_ptr<RpcAuth> auth;
     AuthMethod method;
     shared_ptr<SessionConfig> conf;
+    Gsasl_session * session;
+    Gsasl * ctx;
 
 };
 
