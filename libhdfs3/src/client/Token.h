@@ -66,6 +66,12 @@ public:
                && kind == other.kind && service == other.service;
     }
 
+     void setKmsToken(const std::string & str) {
+         kind = "kms-dt";
+         service = "kms";
+         identifier = str;
+     }
+
     std::string toString() const;
 
     Token & fromString(const std::string & str);

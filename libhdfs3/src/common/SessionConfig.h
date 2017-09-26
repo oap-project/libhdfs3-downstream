@@ -110,6 +110,10 @@ public:
         secureDatanode = val;
     }
 
+    const std::string& getKmsToken() const {
+        return kmsAuthToken;
+    }
+
     int32_t getCryptoBufferSize() const {
         return cryptoBufferSize;
     }
@@ -416,6 +420,7 @@ public:
     int32_t closeFileTimeout;
     std::string kmsUrl;
     std::string kmsAuthMethod;
+    std::string kmsAuthToken;
     int32_t httpRequestRetryTimes;
     int64_t curlTimeout;
 

@@ -674,6 +674,23 @@ int hdfsUtime(hdfsFS fs, const char * path, tTime mtime, tTime atime);
 int hdfsTruncate(hdfsFS fs, const char * path, tOffset pos, int * shouldWait);
 
 /**
+ * Get a delegation token from KMS.
+ * The token should be freed using hdfsFreeKmsToken after canceling the token or token expired.
+ *
+ * @param fs The file system
+ *
+ * @return Return a kms token, NULL on error.
+ */
+char * hdfsGetKmsToken(hdfsFS fs);
+
+/**
+ * Free a kms token.
+ *
+ * @param token The token to be freed.
+ */
+void hdfsFreeKmsToken(char * token);
+
+/**
  * Get a delegation token from namenode.
  * The token should be freed using hdfsFreeDelegationToken after canceling the token or token expired.
  *

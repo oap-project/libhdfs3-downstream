@@ -45,7 +45,9 @@ RemoteBlockReader::RemoteBlockReader(shared_ptr<FileSystemInter> filesystem,
                                      PeerCache& peerCache, int64_t start,
                                      int64_t len, const Token& token,
                                      const char* clientName, bool verify,
-                                     SessionConfig& conf)
+                                     SessionConfig& conf,
+                                     shared_ptr<CryptoCodec> crypto,
+                                     shared_ptr<KmsClientProvider> kms)
     : sentStatus(false),
       verify(verify),
       binfo(eb),
@@ -58,7 +60,9 @@ RemoteBlockReader::RemoteBlockReader(shared_ptr<FileSystemInter> filesystem,
       endOffset(len + start),
       lastSeqNo(-1),
       peerCache(peerCache),
-      filesystem(filesystem) {
+      filesystem(filesystem),
+      cryptoCodec(crypto),
+      kcp(kms){
 
     assert(start >= 0);
     readTimeout = conf.getInputReadTimeout();
@@ -81,6 +85,23 @@ RemoteBlockReader::RemoteBlockReader(shared_ptr<FileSystemInter> filesystem,
     }
     checkResponse();
 }
+
+shared_ptr<CryptoCodec> RemoteBlockReader::getCryptoCodec() {
+    return cryptoCodec;
+}
+
+void RemoteBlockReader::setCryptoCodec(shared_ptr<CryptoCodec> cryptoCodec) {
+    this->cryptoCodec = cryptoCodec;
+}
+
+shared_ptr<KmsClientProvider> RemoteBlockReader::getKmsClientProvider() {
+    return kcp;
+}
+
+void RemoteBlockReader::setKmsClientProvider(shared_ptr<KmsClientProvider> kcp) {
+    this->kcp = kcp;
+}
+
 
 void RemoteBlockReader::setupReader(SessionConfig& conf)
 {
@@ -320,6 +341,14 @@ void RemoteBlockReader::readNextPacket() {
 
         if (verify) {
             verifyChecksum(chunks);
+        }
+
+        // decrypt after checksum
+        char *data = (&buffer[0]) + checksumLen;
+        std::string decoded;
+        if (cryptoCodec) {
+             decoded = cryptoCodec->decode(data, dataSize);
+             memcpy(data, decoded.c_str(), dataSize);
         }
 
         /*

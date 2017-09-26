@@ -26,11 +26,14 @@
 
 namespace Hdfs {
 
+#define ACL_BIT (1 << 12)
+#define ENCRYPTED_BIT (1 << 13)
+
 Permission::Permission(uint16_t mode) {
 	uint16_t fileEncryptionBit = (1 << 13);
 	bool isFileEncryption = (((mode & fileEncryptionBit) != 0) ? true : false);
 
-    if (!isFileEncryption && mode >> 10) {
+    if (!isFileEncryption && mode >> 14) {
         THROW(InvalidParameter,
               "Invalid parameter: cannot convert %u to \"Permission\"",
               static_cast<unsigned int>(mode));
@@ -40,6 +43,8 @@ Permission::Permission(uint16_t mode) {
     groupAction = (Action)((mode >> 3) & 7);
     otherAction = (Action)(mode & 7);
     stickyBit = (((mode >> 9) & 1) == 1);
+    hasAcl = (mode & ACL_BIT) != 0;
+    isEncrypted = (mode & ENCRYPTED_BIT) != 0;
 }
 
 }

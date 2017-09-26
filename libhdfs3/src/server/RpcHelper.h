@@ -168,6 +168,19 @@ static inline void Convert(LocatedBlocks & lbs,
     }
 
     std::sort(blocks.begin(), blocks.end(), std::less<LocatedBlock>());
+
+    if (proto.has_fileencryptioninfo()) {
+        const FileEncryptionInfoProto &encrypt =  proto.fileencryptioninfo();
+        FileEncryptionInfo& convert = lbs.getEncryption();
+        convert.setSuite(encrypt.suite());
+        convert.setCryptoProtocolVersion(encrypt.cryptoprotocolversion());
+        convert.setKey(encrypt.key());
+        convert.setIv(encrypt.iv());
+        convert.setKeyName(encrypt.keyname());
+        convert.setEzKeyVersionName(encrypt.ezkeyversionname());
+
+    }
+
 }
 
 static inline void Convert(const std::string & src, FileStatus & fs,

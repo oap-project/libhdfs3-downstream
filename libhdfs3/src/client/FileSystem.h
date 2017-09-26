@@ -261,6 +261,15 @@ public:
      */
     bool truncate(const char * src, int64_t size);
 
+     /**
+     * Get a valid kms Token.
+     *
+     * @return Token string
+     * @throws IOException
+     */
+    std::string getKmsToken();
+
+
     /**
      * Get a valid Delegation Token.
      *

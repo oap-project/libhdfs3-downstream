@@ -1323,6 +1323,31 @@ int hdfsTruncate(hdfsFS fs, const char * path, tOffset pos, int * shouldWait) {
     return -1;
 }
 
+char * hdfsGetKmsToken(hdfsFS fs) {
+    PARAMETER_ASSERT(fs, NULL, EINVAL);
+
+    try {
+        std::string token = fs->getFilesystem().getKmsToken();
+        return Strdup(token.c_str());
+    } catch (const std::bad_alloc & e) {
+        SetErrorMessage("Out of memory");
+        errno = ENOMEM;
+    } catch (...) {
+        SetLastException(Hdfs::current_exception());
+        handleException(Hdfs::current_exception());
+    }
+
+    return NULL;
+}
+
+void hdfsFreeKmsToken(char * token) {
+    if (!token) {
+        return;
+    }
+
+    delete token;
+}
+
 char * hdfsGetDelegationToken(hdfsFS fs, const char * renewer) {
     PARAMETER_ASSERT(fs && renewer && strlen(renewer) > 0, NULL, EINVAL);
 

@@ -260,6 +260,15 @@ public:
     virtual bool truncate(const char * src, int64_t size) /* throw AccessControlException,
 	 FileNotFoundException, UnresolvedLinkException, HdfsIOException */ = 0;
 
+     /**
+     * Get a valid KMS Token.
+     *
+     * @return Token<KmsTokenIdentifier>
+     * @throws IOException
+     */
+    virtual std::string getKmsToken() = 0;
+
+
     /**
      * Get a valid Delegation Token.
      *

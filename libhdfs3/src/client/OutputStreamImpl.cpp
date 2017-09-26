@@ -276,16 +276,14 @@ void OutputStreamImpl::openInternal(shared_ptr<FileSystemInter> fs, const char *
     fileStatus = fs->getFileStatus(this->path.c_str());
     FileEncryptionInfo *fileEnInfo = fileStatus.getFileEncryption();
     if (fileStatus.isFileEncrypted()) {
-        if (cryptoCodec == NULL) {
-            auth = shared_ptr<RpcAuth>(
-                    new RpcAuth(fs->getUserInfo(),
-                            RpcAuth::ParseMethod(conf->getKmsMethod())));
-            kcp = shared_ptr<KmsClientProvider>(
-                    new KmsClientProvider(auth, conf));
-            cryptoCodec = shared_ptr<CryptoCodec>(
-                    new CryptoCodec(fileEnInfo, kcp,
-                            conf->getCryptoBufferSize()));
-        }
+        auth = shared_ptr<RpcAuth>(
+                new RpcAuth(fs->getUserInfo(),
+                        RpcAuth::ParseMethod(conf->getKmsMethod())));
+        kcp = shared_ptr<KmsClientProvider>(
+                new KmsClientProvider(auth, conf));
+        cryptoCodec = shared_ptr<CryptoCodec>(
+                new CryptoCodec(fileEnInfo, kcp,
+                        conf->getCryptoBufferSize()));
     }
     closed = false;
     computePacketChunkSize();

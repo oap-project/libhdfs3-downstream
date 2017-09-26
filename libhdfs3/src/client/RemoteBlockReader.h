@@ -35,6 +35,9 @@
 #include "FileSystemInter.h"
 #include "SessionConfig.h"
 #include "DataReader.h"
+#include "CryptoCodec.h"
+#include "KmsClientProvider.h"
+
 
 namespace Hdfs {
 namespace Internal {
@@ -45,7 +48,8 @@ public:
                       const ExtendedBlock& eb, DatanodeInfo& datanode,
                       PeerCache& peerCache, int64_t start, int64_t len,
                       const Token& token, const char* clientName, bool verify,
-                      SessionConfig& conf);
+                      SessionConfig& conf, shared_ptr<CryptoCodec> crypto=NULL,
+                      shared_ptr<KmsClientProvider> kms=NULL);
 
     ~RemoteBlockReader();
 
@@ -69,6 +73,27 @@ public:
      * @param len The number of bytes to skip.
      */
     virtual void skip(int64_t len);
+
+    /**
+     * Get KmsClientProvider.
+     */
+    shared_ptr<KmsClientProvider> getKmsClientProvider();
+
+    /**
+     * Set KmsClientProvider.
+     */
+    void setKmsClientProvider(shared_ptr<KmsClientProvider> kcp);
+
+    /**
+     * Get CryptoCodec.
+     */
+    shared_ptr<CryptoCodec> getCryptoCodec();
+
+    /**
+     * Set CryptoCodec.
+     */
+    void setCryptoCodec(shared_ptr<CryptoCodec> cryptoCodec);
+
 
 private:
     bool readTrailingEmptyPacket();
@@ -105,6 +130,9 @@ private:
     shared_ptr<Socket> sock;
     std::vector<char> buffer;
     shared_ptr<FileSystemInter> filesystem;
+    shared_ptr<CryptoCodec> cryptoCodec;
+    shared_ptr<KmsClientProvider> kcp;
+
 };
 
 }

@@ -636,6 +636,22 @@ std::string FileSystemImpl::getDelegationToken(const char * renewer) {
     return retval.toString();
 }
 
+std::string FileSystemImpl::getKmsToken() {
+    if (sconf.getKmsUrl().length() == 0) {
+        THROW(HdfsIOException, "KMS provider not configured");
+    }
+    AuthMethod method = RpcAuth::ParseMethod(sconf.getKmsMethod());
+    if (method != AuthMethod::KERBEROS) {
+        THROW(HdfsIOException, "KMS authentication type is not kerberos");
+    }
+    FileEncryptionInfo info;
+    shared_ptr<RpcAuth> auth = shared_ptr<RpcAuth>(new RpcAuth(getUserInfo(), method));
+    shared_ptr<SessionConfig> config = shared_ptr<SessionConfig>(new SessionConfig(conf));
+    shared_ptr<KmsClientProvider> getter = shared_ptr <KmsClientProvider>(new KmsClientProvider(auth, config));
+    return getter->getMaterial(info, true);
+}
+
+
 std::string FileSystemImpl::getDelegationToken() {
     return getDelegationToken(key.getUser().getPrincipal().c_str());
 }

@@ -169,7 +169,8 @@ SessionConfig::SessionConfig(const Config & conf) {
         {&kmsUrl, "dfs.encryption.key.provider.uri", "" },
         {&rpcProtectionStr, "hadoop.rpc.protection", ""},
         {&dataProtectionStr, "dfs.data.transfer.protection", ""},
-        {&kmsAuthMethod, "hadoop.kms.authentication.type", "simple" }
+        {&kmsAuthMethod, "hadoop.kms.authentication.type", "simple" },
+        {&kmsAuthToken, "hadoop.kms.authentication.token", "" }
     };
 
     for (size_t i = 0; i < ARRAYSIZE(boolValues); ++i) {
