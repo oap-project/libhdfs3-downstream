@@ -436,7 +436,7 @@ std::string KmsClientProvider::getToken()
     hc->init();
     /* Prepare url for HttpClient.*/
     url = parseKmsUrl();
-    std::string urlSuffix = "keys";
+    std::string urlSuffix = "keys/names";
     url = buildKmsUrl(url, urlSuffix);
     /* Prepare headers for HttpClient.*/
     std::vector<std::string> headers;
@@ -452,50 +452,28 @@ std::string KmsClientProvider::getToken()
     hc->addHeader(beforeAction());
     hc->setupHeaderCallback();
     hc->get();
-    std::string response = hc->getHeaderResponse();
-
-    size_t size = response.length();
-    const char* data = response.c_str();
-    const char *ptr = (char*) memchr(data, ':', size);
     std::string kmsToken;
-
-    if (ptr) {
-        int idx = ptr-data;
-        std::string key;
-        key.assign(data, idx);
-        std::string value;
-        int offset = 1;
-        if (*(ptr+1) == ' ')
-            offset += 1;
-        value.assign(ptr+offset, size-idx-offset);
-
-        size_t last = value.find_last_not_of("\r\n");
-        if (last == value.npos)
-            value = "";
-        else
-            value =  value.substr(0, (last+1));
-
-        if (key == "Set-Cookie") {
-            std::string auth_cookie = "hadoop.auth";
-            std::string auth_cookie_eq = auth_cookie + "=";
-            int pos = value.find(auth_cookie_eq);
-            if (pos != (int)value.npos) {
-                std::string token = value.substr(pos+auth_cookie_eq.length());
-                int separator = token.find(";");
-                if (separator != (int)token.npos) {
-                    token = token.substr(0, separator);
-                }
-                kmsToken = token;
+    std::map<std::string, std::string>& response = hc->getHeaderResponse();
+    std::map<std::string, std::string>::iterator it = response.find("Set-Cookie");
+    if (it != response.end()) {
+        std::string value = it->second;
+        std::string auth_cookie = "hadoop.auth";
+        std::string auth_cookie_eq = auth_cookie + "=";
+        int pos = value.find(auth_cookie_eq);
+        if (pos != (int)value.npos) {
+            std::string token = value.substr(pos+auth_cookie_eq.length());
+            int separator = token.find(";");
+            if (separator != (int)token.npos) {
+                token = token.substr(0, separator);
             }
-
+            kmsToken = token;
         }
-        return kmsToken;
     }
 
     LOG(DEBUG3,
-            "KmsClientProvider::getToken : The kms url is : %s . The response of kms server is : %s .",
-            url.c_str(), response.c_str());
-    return "";
+            "KmsClientProvider::getToken : The kms url is : %s .",
+            url.c_str());
+    return kmsToken;
 
 }
 }

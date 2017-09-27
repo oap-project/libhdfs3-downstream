@@ -112,12 +112,31 @@ size_t HttpClient::CurlWriteMemoryCallback(void *contents, size_t size, size_t n
  */
 size_t HttpClient::CurlWriteHeaderCallback(char *contents, size_t size, size_t nmemb, void *userp)
 {
-  size_t realsize = size * nmemb;
-  if (userp == NULL || contents == NULL) {
+    size_t realsize = size * nmemb;
+    if (userp == NULL || contents == NULL) {
         return 0;
-  }
-  ((std::string *) userp)->append((const char *) contents, realsize);
-  LOG(DEBUG3, "HttpClient : Http response is : %s", ((std::string * )userp)->c_str());
+    }
+    std::map<std::string, std::string> *headers = (std::map<std::string, std::string>*)userp;
+    const char *ptr = (char*) memchr(contents, ':', realsize);
+
+    if (ptr) {
+        int idx = ptr-contents;
+        std::string key;
+        key.assign(contents, idx);
+        std::string value;
+        int offset = 1;
+        if (*(ptr+1) == ' ')
+            offset += 1;
+        value.assign(ptr+offset, realsize-idx-offset);
+
+        size_t last = value.find_last_not_of("\r\n");
+        if (last == value.npos)
+            value = "";
+        else
+            value =  value.substr(0, (last+1));
+        headers->insert(std::make_pair(key, value));
+    }
+
   return realsize;
 }
 
@@ -382,6 +401,7 @@ std::string HttpClient::escape(const std::string &data) {
         }
     } else {
         LOG(WARNING, "HttpClient : Curl in escape method is NULL");
+        return data;
     }
 }
 }

@@ -60,6 +60,8 @@ public:
      */
     virtual std::string decode(const char * buffer, int64_t size);
 
+    void resetCached();
+
 private:
 
     /**
@@ -82,6 +84,8 @@ private:
     EVP_CIPHER_CTX *decryptCtx;
     const EVP_CIPHER *cipher;
     int32_t bufSize;
+
+    bool reInit;
 };
 
 }

@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <curl/curl.h>
+#include <map>
 #include "Exception.h"
 #include "ExceptionInternal.h"
 
@@ -130,7 +131,7 @@ public:
      */
     std::string errorString();
 
-    std::string& getHeaderResponse() {
+    std::map<std::string, std::string>& getHeaderResponse() {
         return headerResponse;
     }
 
@@ -169,7 +170,7 @@ private:
     CURL *curl;
     struct curl_slist *list;
     std::string response;
-    std::string headerResponse;
+    std::map<std::string, std::string> headerResponse;
     char errbuf[CURL_ERROR_SIZE] = { 0 };
 };
 

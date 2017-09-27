@@ -44,7 +44,7 @@ CryptoCodec::CryptoCodec(FileEncryptionInfo *encryptionInfo, shared_ptr<KmsClien
     /* Create cipher context. */
     encryptCtx = EVP_CIPHER_CTX_new();
     cipher = NULL;
-
+    reInit = true;
 }
 
 /**
@@ -56,6 +56,11 @@ CryptoCodec::~CryptoCodec()
         EVP_CIPHER_CTX_free(encryptCtx);
 }
 
+
+void CryptoCodec::resetCached()
+{
+    reInit = true;
+}
 /**
  * Get decrypted key from kms.
  */
@@ -84,6 +89,7 @@ std::string CryptoCodec::getDecryptedKeyFromKms()
     LOG(DEBUG3, "CryptoCodec : getDecryptedKeyFromKms material is :%s", key.c_str());
 
     key = KmsClientProvider::base64Decode(key);
+    reInit = false;
     return key;
 
 	
@@ -103,28 +109,30 @@ std::string CryptoCodec::endecInternal(const char * buffer, int64_t size, bool e
     LOG(DEBUG3,
             "CryptoCodec : endecInternal info. key:%s, iv:%s, buffer:%s, size:%d, is_encode:%d.",
             key.c_str(), iv.c_str(), buffer, size, enc);
-	
-    /* Get decrypted key from KMS */
-    key = getDecryptedKeyFromKms();
 
-    /* Select cipher method based on the key length. */
-    if (key.length() == KEY_LENGTH_256) {
-        cipher = EVP_aes_256_ctr();
-    } else if (key.length() == KEY_LENGTH_128) {
-        cipher = EVP_aes_128_ctr();
-    } else {
-        cipher = EVP_aes_192_ctr();
-    }
+	if (reInit) {
+        /* Get decrypted key from KMS */
+        key = getDecryptedKeyFromKms();
 
-    /* Init cipher context with cipher method, encrypted key and IV from KMS. */
-    int encode = enc ? 1 : 0;
-    if (!EVP_CipherInit_ex(encryptCtx, cipher, NULL,
-            (const unsigned char *) key.c_str(),
-            (const unsigned char *) iv.c_str(), encode)) {
-        LOG(WARNING, "EVP_CipherInit_ex failed");
+        /* Select cipher method based on the key length. */
+        if (key.length() == KEY_LENGTH_256) {
+            cipher = EVP_aes_256_ctr();
+        } else if (key.length() == KEY_LENGTH_128) {
+            cipher = EVP_aes_128_ctr();
+        } else {
+            cipher = EVP_aes_192_ctr();
+        }
+
+        /* Init cipher context with cipher method, encrypted key and IV from KMS. */
+        int encode = enc ? 1 : 0;
+        if (!EVP_CipherInit_ex(encryptCtx, cipher, NULL,
+                (const unsigned char *) key.c_str(),
+                (const unsigned char *) iv.c_str(), encode)) {
+            LOG(WARNING, "EVP_CipherInit_ex failed");
+        }
+        LOG(DEBUG3, "EVP_CipherInit_ex successfully");
+        EVP_CIPHER_CTX_set_padding(encryptCtx, 0);
     }
-    LOG(DEBUG3, "EVP_CipherInit_ex successfully");
-    EVP_CIPHER_CTX_set_padding(encryptCtx, 0);
 
     /* Encode/decode buffer within cipher context. */
     std::string result;
