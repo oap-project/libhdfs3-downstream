@@ -408,6 +408,7 @@ hdfsFS hdfsBuilderConnect(struct hdfsBuilder * bld, const char * effective_user)
     Hdfs::Internal::SessionConfig conf(*bld->conf);
     std::string uri;
     std::stringstream ss;
+    std::string user;
     ss.imbue(std::locale::classic());
     xmlURIPtr uriobj;
     FileSystem * fs = NULL;
@@ -443,8 +444,7 @@ hdfsFS hdfsBuilderConnect(struct hdfsBuilder * bld, const char * effective_user)
         ss << uriobj->scheme << "://";
 
         if (uriobj->user || !bld->userName.empty()) {
-            ss << (uriobj->user ? uriobj->user : bld->userName.c_str())
-               << '@';
+            user = (uriobj->user ? uriobj->user : bld->userName.c_str());
         }
 
         if (bld->port == 0 && uriobj->port == 0) {
@@ -479,6 +479,8 @@ hdfsFS hdfsBuilderConnect(struct hdfsBuilder * bld, const char * effective_user)
 
         if (!bld->token.empty()) {
             fs->connect(uri.c_str(), NULL, bld->token.c_str());
+        } else if(!user.empty()) {
+            fs->connect(uri.c_str(), user.c_str(), NULL);
         } else {
             fs->connect(uri.c_str());
         }
