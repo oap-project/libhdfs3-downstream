@@ -724,7 +724,7 @@ int hdfsExists(hdfsFS fs, const char * path) {
     PARAMETER_ASSERT(fs && path && strlen(path) > 0, -1, EINVAL);
 
     try {
-        return fs->getFilesystem().exist(path) ? 1 : 0;
+        return fs->getFilesystem().exist(path) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
@@ -894,7 +894,7 @@ int hdfsDelete(hdfsFS fs, const char * path, int recursive) {
     PARAMETER_ASSERT(fs && path && strlen(path) > 0, -1, EINVAL);
 
     try {
-        return fs->getFilesystem().deletePath(path, recursive) ? 1 : 0;
+        return fs->getFilesystem().deletePath(path, recursive) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
@@ -911,7 +911,7 @@ int hdfsRename(hdfsFS fs, const char * oldPath, const char * newPath) {
     PARAMETER_ASSERT(newPath && strlen(newPath) > 0, -1, EINVAL);
 
     try {
-        return fs->getFilesystem().rename(oldPath, newPath) ? 1 : 0;
+        return fs->getFilesystem().rename(oldPath, newPath) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
@@ -983,7 +983,7 @@ int hdfsCreateDirectory(hdfsFS fs, const char * path) {
     PARAMETER_ASSERT(fs && path && strlen(path) > 0, -1, EINVAL);
 
     try {
-        return fs->getFilesystem().mkdirs(path, 0755) ? 1 : 0;
+        return fs->getFilesystem().mkdirs(path, 0755) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
@@ -1000,9 +1000,9 @@ int hdfsCreateDirectoryEx(hdfsFS fs, const char * path, short mode, int createPa
 
     try {
         if (createParents)
-            return fs->getFilesystem().mkdirs(path, mode) ? 1 : 0;
+            return fs->getFilesystem().mkdirs(path, mode) ? 0 : -1;
         else
-            return fs->getFilesystem().mkdir(path, mode) ? 1 : 0;
+            return fs->getFilesystem().mkdir(path, mode) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
@@ -1018,7 +1018,7 @@ int hdfsSetReplication(hdfsFS fs, const char * path, int16_t replication) {
     PARAMETER_ASSERT(fs && path && strlen(path) > 0 && replication > 0, -1, EINVAL);
 
     try {
-        return fs->getFilesystem().setReplication(path, replication) ? 1 : 0;
+        return fs->getFilesystem().setReplication(path, replication) ? 0 : -1;
     } catch (const std::bad_alloc & e) {
         SetErrorMessage("Out of memory");
         errno = ENOMEM;
