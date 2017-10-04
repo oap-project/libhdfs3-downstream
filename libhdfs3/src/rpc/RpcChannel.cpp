@@ -757,12 +757,13 @@ void RpcChannelImpl::sendConnectionHeader(const RpcAuth &auth) {
 void RpcChannelImpl::buildConnectionContext(
     IpcConnectionContextProto & connectionContext, const RpcAuth & auth) {
     connectionContext.set_protocol(key.getProtocol().getProtocol());
-    std::string principal = key.getAuth().getUser().getPrincipal();
+    // std::string principal = key.getAuth().getUser().getPrincipal();
     std::string euser = key.getAuth().getUser().getEffectiveUser();
     std::string ruser = key.getAuth().getUser().getRealUser();
 
-    if (!key.getAuth().getUser().hasEffectiveUser())
-        euser = principal;
+    // if (!key.getAuth().getUser().hasEffectiveUser())
+    //     euser = principal;
+
 
     if (auth.getMethod() != AuthMethod::TOKEN) {
         UserInformationProto * user = connectionContext.mutable_userinfo();
