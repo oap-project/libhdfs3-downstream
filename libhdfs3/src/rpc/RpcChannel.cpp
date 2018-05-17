@@ -760,10 +760,25 @@ void RpcChannelImpl::buildConnectionContext(
     std::string principal = key.getAuth().getUser().getPrincipal();
     std::string euser = key.getAuth().getUser().getEffectiveUser();
     std::string ruser = key.getAuth().getUser().getRealUser();
+    cout << principal;
+    cout << euser;
+    cout << ruser
 
-    if (!key.getAuth().getUser().hasEffectiveUser())
-        euser = principal;
-
+    if (auth.getMethod() == AuthMethod::KERBEROS){
+        if (euser.empty()) {
+            user->set_effectiveuser(ruser);
+            user->set_realuser(ruser);
+        }
+        else
+            user->set_effectiveuser(euser);
+    }
+    if (auth.getMethod() == AuthMethod::SIMPLE){
+        if (!euser.empty())
+            user->set_effectiveuser(euser);
+        if (!ruser.empty())
+            user->set_realuser(ruser);
+    }
+    
     if (auth.getMethod() != AuthMethod::TOKEN) {
         UserInformationProto * user = connectionContext.mutable_userinfo();
         user->set_effectiveuser(euser);
