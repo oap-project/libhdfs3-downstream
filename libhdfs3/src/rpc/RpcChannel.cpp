@@ -762,7 +762,7 @@ void RpcChannelImpl::buildConnectionContext(
     std::string ruser = key.getAuth().getUser().getRealUser();
     cout << principal;
     cout << euser;
-    cout << ruser
+    cout << ruser;
 
     if (auth.getMethod() == AuthMethod::KERBEROS){
         if (euser.empty()) {
