@@ -754,6 +754,9 @@ void RpcChannelImpl::sendConnectionHeader(const RpcAuth &auth) {
                      key.getConf().getWriteTimeout());
 }
 
+#include <iostream>
+using namespace std;
+
 void RpcChannelImpl::buildConnectionContext(
     IpcConnectionContextProto & connectionContext, const RpcAuth & auth) {
     connectionContext.set_protocol(key.getProtocol().getProtocol());
