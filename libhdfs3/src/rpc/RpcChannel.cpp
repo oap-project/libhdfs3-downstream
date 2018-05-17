@@ -754,32 +754,29 @@ void RpcChannelImpl::sendConnectionHeader(const RpcAuth &auth) {
                      key.getConf().getWriteTimeout());
 }
 
-#include <iostream>
-using namespace std;
-
 void RpcChannelImpl::buildConnectionContext(
     IpcConnectionContextProto & connectionContext, const RpcAuth & auth) {
     connectionContext.set_protocol(key.getProtocol().getProtocol());
     std::string principal = key.getAuth().getUser().getPrincipal();
     std::string euser = key.getAuth().getUser().getEffectiveUser();
     std::string ruser = key.getAuth().getUser().getRealUser();
-    cout << principal;
-    cout << euser;
-    cout << ruser;
 
     if (auth.getMethod() == AuthMethod::KERBEROS){
         if (euser.empty()) {
             user->set_effectiveuser(ruser);
             user->set_realuser(ruser);
         }
-        else
+        else {
             user->set_effectiveuser(euser);
+        }
     }
     if (auth.getMethod() == AuthMethod::SIMPLE){
-        if (!euser.empty())
+        if (!euser.empty()) {
             user->set_effectiveuser(euser);
-        if (!ruser.empty())
+        }
+        if (!ruser.empty()) {
             user->set_realuser(ruser);
+        }
     }
     
     if (auth.getMethod() != AuthMethod::TOKEN) {
@@ -793,6 +790,7 @@ void RpcChannelImpl::buildConnectionContext(
         }
     }
 }
+
 void RpcChannelImpl::sendConnectionContent(const RpcAuth & auth) {
     WriteBuffer buffer;
     IpcConnectionContextProto connectionContext;
