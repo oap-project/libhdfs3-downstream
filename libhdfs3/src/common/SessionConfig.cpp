@@ -165,7 +165,7 @@ SessionConfig::SessionConfig(const Config & conf) {
         {&rpcAuthMethod, "hadoop.security.authentication", "simple" },
         {&kerberosCachePath, "hadoop.security.kerberos.ticket.cache.path", "" },
         {&logSeverity, "dfs.client.log.severity", "INFO" },
-        {&domainSocketPath, "dfs.domain.socket.path", ""},
+        {&domainSocketPath, "dfs.domain.socket.path", "/var/lib/hadoop-hdfs/dn_socket"},
         {&kmsUrl, "dfs.encryption.key.provider.uri", "" },
         {&rpcProtectionStr, "hadoop.rpc.protection", ""},
         {&dataProtectionStr, "dfs.data.transfer.protection", ""},
